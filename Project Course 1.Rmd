@@ -115,12 +115,12 @@ hist1<-ggplot(data=data.frame(stepsday), mapping = aes(x=date, y=steps)) +
     geom_bar(stat = "identity", color="blue", fill="steelblue") +
     labs(x="Date")+
     labs(y="Steps")+
-    ggtitle("Total number of steps taken per day (with NAs)")  
+    ggtitle("Total steps per day (with NAs)")  
 hist2<-ggplot(data=data.frame(newstepsday), mapping = aes(x=date, y=steps.x)) + 
     geom_bar(stat = "identity", color="blue", fill="steelblue") +
     labs(x="Date")+
     labs(y="Steps")+
-    ggtitle("Total number of steps taken per day (without NAs")
+    ggtitle("Total steps per day (without NAs)")
 ggarrange(hist1, hist2,  
           ncol = 2, nrow = 1) 
 
