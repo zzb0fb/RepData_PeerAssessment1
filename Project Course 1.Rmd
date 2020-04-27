@@ -1,0 +1,157 @@
+
+# Reproducible Research - Project course 1
+---
+author: "Manuel"
+date: `r date()`
+output: html_document
+---
+
+## Loading and preprocessing the data
+
+```{r loading}
+# As starting point I will create a directory ("data") where load the .zip file
+if (!file.exists('data')){
+    dir.create('data')
+}
+
+# And as next step I will download the information keeping record on when was downloaded
+fileURL <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+download.file(fileURL,destfile = 'data/data_project.zip')
+unzip('data/data_project.zip',exdir = './data')
+date_of_download <- date()
+
+# Reading the input file and converting date column from factor to date
+activity=read.csv("./data/activity.csv")
+activity$date<-as.Date(activity$date)
+```
+
+Data has been loaded
+    from `r fileURL`
+    on `r date_of_download` 
+    
+
+## What is mean total number of steps taken per day?
+
+```{r histogram & mean/median}
+
+# Firstly I calculate the data I need to show in the histogram and required values
+stepsday<-aggregate(steps ~ date, activity,sum)         # total steps/days
+stepsmean<-aggregate(steps ~ date, activity,mean)       # mean steps/day
+stepsmedian<-aggregate(steps ~ date, activity,median)   # median steps/day
+
+library(ggplot2)
+# I set centered the title of becoming plots
+theme_update(plot.title = element_text(hjust = 0.5))
+# Create the histogram of number of steps per day
+ggplot(data=data.frame(stepsday), mapping = aes(x=date, y=steps)) + 
+     geom_bar(stat = "identity", color="blue", fill="steelblue") +
+     labs(x="Date")+
+     labs(y="Steps")+
+     ggtitle("Total number of steps taken per day")    
+
+```
+
+The mean and median of the total number of steps taken per day are:
+    *mean*: **`r mean(stepsmean$steps)`**
+    *median*: **`r median(stepsmedian$steps)`**
+
+## What is the average daily activity pattern?
+
+```{r average daily}
+
+# get a data frame with the average of steps per interval
+stepsIntervalmean<-aggregate(steps ~ interval, activity,mean)       
+
+plot(stepsIntervalmean$interval, stepsIntervalmean$steps , 
+     type="l",
+     xlab="Interval",
+     col="steelblue",
+     ylab="Steps",
+     main="Average steps per Interval")   
+
+# I extract from the data frame the row which columne step has the max value
+maxIntervalSteps<-stepsIntervalmean[stepsIntervalmean$steps ==
+                      max(stepsIntervalmean$steps, 
+                          na.rm = TRUE),]    
+```
+
+**`r maxIntervalSteps$interval`** is the *5-minute interval*, on average across all the days in the dataset, which contains the maximum number of steps
+
+## Imputing missing values
+
+```{r imputing missing values}
+
+# Firstly I extract the total number of missing values in the dataset
+missingValues=sum(is.na(activity))
+```
+
+The total number of *missing values* in the dataset is **`r missingValues`**
+
+So in order to fill this missing value I use the following *strategy*: I will use the mean of the interval and will create a new dataframe that is equal to the original dataset but with the missing data filled in.
+
+```{r new data set}
+
+# Create a new data frame mergin the activity data frame and the data frame which
+# contains step means by interval
+newactivity=merge(activity, stepsIntervalmean, by="interval")
+
+# Replace NA interval step values by the mean of steps  
+newactivity$steps.x <- ifelse(is.na(newactivity$steps.x), 
+                            newactivity$steps.y, 
+                            newactivity$steps.x)
+
+```
+
+Now an histogram is created of the total number of steps taken each day and will calculate and report the mean and median total number of steps taken per day
+
+```{r new histogram}
+library(ggpubr)
+
+newstepsday<-aggregate(steps.x ~ date, newactivity,sum)         # total steps/days
+newstepsmean<-aggregate(steps.x ~ date, newactivity,mean)       # mean steps/day
+newstepsmedian<-aggregate(steps.x ~ date, newactivity,median)   # median steps/day
+
+hist1<-ggplot(data=data.frame(stepsday), mapping = aes(x=date, y=steps)) + 
+    geom_bar(stat = "identity", color="blue", fill="steelblue") +
+    labs(x="Date")+
+    labs(y="Steps")+
+    ggtitle("Total number of steps taken per day (with NAs)")  
+hist2<-ggplot(data=data.frame(newstepsday), mapping = aes(x=date, y=steps.x)) + 
+    geom_bar(stat = "identity", color="blue", fill="steelblue") +
+    labs(x="Date")+
+    labs(y="Steps")+
+    ggtitle("Total number of steps taken per day (without NAs")
+ggarrange(hist1, hist2,  
+          ncol = 2, nrow = 1) 
+
+```
+
+The mean and median comparision of the total number of steps taken per day are:   
+    *mean with NAs*: **`r mean(stepsmean$steps)`**  
+    *mean without NAs*: **`r mean(newstepsmean$steps)`**    
+    *median with NAs*: **`r median(stepsmedian$steps)`**     
+    *median without NAs*: **`r median(newstepsmedian$steps)`**
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+```{r weekdays}
+#First I create a column with the day of the date
+activity=cbind(weekday=weekdays(activity$date),activity)
+
+# Identify and replace weekday name by "weekday" or "weekend" values
+activity$weekday <- ifelse(activity$weekday %in% c("sábado", "domingo"), 
+                              "weekend", 
+                              "weekday")
+
+stepsIntervalWeekday<-aggregate(steps ~ interval+weekday, activity,mean)       
+
+library(lattice)
+xyplot(steps ~ interval | weekday, 
+       data = stepsIntervalWeekday,
+       type="l",
+       layout = c(1, 2),
+       main="Average across all weekday days or weekend",
+       xlab = "Interval",
+       ylab = "Average steps")
+```
+
